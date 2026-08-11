@@ -49,7 +49,7 @@ export default function Home() {
             </a>
 
             <a
-              href="#bewerbung"
+              href="/bewerbung"
               className="rounded-xl border-2 border-slate-900 px-8 py-4 font-semibold text-slate-900 transition hover:bg-slate-100"
             >
               🛟 Rettungsschwimmer werden
@@ -120,10 +120,10 @@ export default function Home() {
           </p>
 
           <a
-            href="#kontakt"
-            className="mt-8 inline-block rounded-xl bg-white px-8 py-4 font-semibold text-slate-900"
+            href="/bewerbung"
+            className="mt-8 inline-block rounded-xl bg-white px-8 py-4 font-semibold text-slate-900 transition hover:bg-slate-200"
           >
-            Jetzt bewerben
+            Jetzt bewerben →
           </a>
         </div>
       </section>
