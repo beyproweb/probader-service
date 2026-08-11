@@ -42,7 +42,7 @@ export default function Home() {
           {/* Die zwei Hauptbereiche */}
           <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
             <a
-              href="#baeder"
+              href="/baeder"
               className="rounded-xl bg-slate-900 px-8 py-4 font-semibold text-white transition hover:bg-slate-700"
             >
               🏊 Für Bäder & Einrichtungen
