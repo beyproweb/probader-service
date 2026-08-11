@@ -73,38 +73,41 @@ export default function Home() {
 
         <div className="grid gap-6 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 p-6 sm:p-8">
-            <div className="text-2xl sm:text-3xl">🛟</div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl sm:text-3xl">🛟</span>
+              <h3 className="text-lg font-bold sm:text-xl">
+                Qualifizierte Rettungsschwimmer
+              </h3>
+            </div>
 
-            <h3 className="mt-4 text-lg font-bold sm:mt-5 sm:text-xl">
-              Qualifizierte Rettungsschwimmer
-            </h3>
-
-            <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:mt-3 sm:text-base">
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
               Zuverlässiges und geschultes Personal für Ihre Schwimmbadanlage.
             </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 p-6 sm:p-8">
-            <div className="text-2xl sm:text-3xl">🏊</div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl sm:text-3xl">🏊</span>
+              <h3 className="text-lg font-bold sm:text-xl">
+                Für Bäder & Hotels
+              </h3>
+            </div>
 
-            <h3 className="mt-4 text-lg font-bold sm:mt-5 sm:text-xl">
-              Für Bäder & Hotels
-            </h3>
-
-            <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:mt-3 sm:text-base">
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
               Flexible Personallösungen für Schwimmbäder, Hotels, Resorts und
               Freizeiteinrichtungen.
             </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200 p-6 sm:p-8">
-            <div className="text-2xl sm:text-3xl">✓</div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl sm:text-3xl">✓</span>
+              <h3 className="text-lg font-bold sm:text-xl">
+                Sicherheit an erster Stelle
+              </h3>
+            </div>
 
-            <h3 className="mt-4 text-lg font-bold sm:mt-5 sm:text-xl">
-              Sicherheit an erster Stelle
-            </h3>
-
-            <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:mt-3 sm:text-base">
+            <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
               Unser Fokus liegt auf Sicherheit, Zuverlässigkeit und
               professionellem Service.
             </p>
