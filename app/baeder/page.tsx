@@ -149,13 +149,18 @@ export default function BaederPage() {
             </p>
           </div>
 
-          <form className="mt-10 grid gap-6 sm:grid-cols-2">
+          <form
+            action="https://formspree.io/f/xaewjwlr"
+            method="POST"
+            className="mt-10 grid gap-6 sm:grid-cols-2"
+          >
             <div>
               <label className="font-semibold">Ansprechpartner *</label>
 
               <input
                 required
                 type="text"
+                name="Ansprechpartner"
                 placeholder="Vor- und Nachname"
                 className="mt-2 w-full rounded-xl border border-slate-700 bg-white px-4 py-3 text-slate-900"
               />
@@ -167,6 +172,7 @@ export default function BaederPage() {
               <input
                 required
                 type="text"
+                name="Unternehmen"
                 placeholder="Name des Unternehmens"
                 className="mt-2 w-full rounded-xl border border-slate-700 bg-white px-4 py-3 text-slate-900"
               />
@@ -178,6 +184,7 @@ export default function BaederPage() {
               <input
                 required
                 type="email"
+                name="E-Mail"
                 placeholder="ihre@email.de"
                 className="mt-2 w-full rounded-xl border border-slate-700 bg-white px-4 py-3 text-slate-900"
               />
@@ -188,6 +195,7 @@ export default function BaederPage() {
 
               <input
                 type="tel"
+                name="Telefonnummer"
                 placeholder="+49 ..."
                 className="mt-2 w-full rounded-xl border border-slate-700 bg-white px-4 py-3 text-slate-900"
               />
@@ -199,6 +207,7 @@ export default function BaederPage() {
               <input
                 required
                 type="text"
+                name="Standort"
                 placeholder="Stadt / Standort"
                 className="mt-2 w-full rounded-xl border border-slate-700 bg-white px-4 py-3 text-slate-900"
               />
@@ -209,12 +218,15 @@ export default function BaederPage() {
                 Benötigte Rettungsschwimmer
               </label>
 
-              <select className="mt-2 w-full rounded-xl border border-slate-700 bg-white px-4 py-3 text-slate-900">
-                <option>Bitte auswählen</option>
-                <option>1</option>
-                <option>2</option>
-                <option>3–5</option>
-                <option>Mehr als 5</option>
+              <select
+                name="Anzahl_Rettungsschwimmer"
+                className="mt-2 w-full rounded-xl border border-slate-700 bg-white px-4 py-3 text-slate-900"
+              >
+                <option value="">Bitte auswählen</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3-5">3–5</option>
+                <option value="Mehr als 5">Mehr als 5</option>
               </select>
             </div>
 
@@ -225,6 +237,7 @@ export default function BaederPage() {
 
               <textarea
                 required
+                name="Nachricht"
                 rows={5}
                 placeholder="Erzählen Sie uns kurz von Ihrem Bedarf..."
                 className="mt-2 w-full rounded-xl border border-slate-700 bg-white px-4 py-3 text-slate-900"
