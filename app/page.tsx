@@ -4,14 +4,13 @@ export default function Home() {
       {/* Kopfzeile */}
       <header className="border-b border-slate-200">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
-          <div>
-            <h1 className="text-lg font-bold tracking-tight sm:text-2xl">
-              Probäder Service
-            </h1>
-            <p className="text-xs text-slate-500 sm:text-sm">
-              Professioneller Rettungsschwimmer-Service
-            </p>
-          </div>
+          <a href="/" className="flex items-center">
+            <img
+              src="/ChatGPT%20Image%20Aug%2014,%202026,%2004_15_31%20PM.png"
+              alt="Probäder Service logo"
+              className="h-12 w-auto object-contain sm:h-16"
+            />
+          </a>
 
           <a
             href="#kontakt"

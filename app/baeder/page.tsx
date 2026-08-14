@@ -1,11 +1,54 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useForm } from "@formspree/react";
+
 export default function BaederPage() {
+  const [isHydrated, setIsHydrated] = useState(false);
+  const formKey =
+    process.env.NEXT_PUBLIC_FORMSPREE_BUSINESS_FORM_ID || "xaewjwlr";
+  const [state, handleSubmit] = useForm(formKey);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  if (isHydrated && state.succeeded) {
+    return (
+      <main className="min-h-screen bg-slate-50 px-6 py-20">
+        <div className="mx-auto max-w-2xl rounded-3xl bg-white p-10 text-center shadow-sm">
+          <div className="text-5xl">✅</div>
+
+          <h1 className="mt-6 text-3xl font-bold">
+            Vielen Dank für Ihre Anfrage!
+          </h1>
+
+          <p className="mt-4 text-slate-600">
+            Wir haben Ihre Anfrage erhalten und melden uns so schnell wie
+            möglich bei Ihnen.
+          </p>
+
+          <a
+            href="/"
+            className="mt-8 inline-block rounded-xl bg-slate-900 px-7 py-3 font-semibold text-white"
+          >
+            Zur Startseite
+          </a>
+        </div>
+      </main>
+    );
+  }
   return (
     <main className="min-h-screen bg-white text-slate-900">
       {/* Header */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <a href="/" className="text-xl font-bold">
-            Probäder Service
+          <a href="/" className="flex items-center">
+            <img
+              src="/ChatGPT%20Image%20Aug%2014,%202026,%2004_15_31%20PM.png"
+              alt="Probäder Service logo"
+              className="h-12 w-auto object-contain sm:h-14"
+            />
           </a>
 
           <a
@@ -150,8 +193,7 @@ export default function BaederPage() {
           </div>
 
           <form
-            action="https://formspree.io/f/xaewjwlr"
-            method="POST"
+            onSubmit={handleSubmit}
             className="mt-10 grid gap-6 sm:grid-cols-2"
           >
             <div>
@@ -247,9 +289,10 @@ export default function BaederPage() {
             <div className="sm:col-span-2">
               <button
                 type="submit"
-                className="w-full rounded-xl bg-white px-8 py-4 font-bold text-slate-900 transition hover:bg-slate-200"
+                disabled={state.submitting}
+                className="w-full rounded-xl bg-white px-8 py-4 font-bold text-slate-900 transition hover:bg-slate-200 disabled:opacity-50"
               >
-                Anfrage senden →
+                {state.submitting ? "Sende…" : "Anfrage senden →"}
               </button>
             </div>
           </form>

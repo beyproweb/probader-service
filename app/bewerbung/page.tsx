@@ -1,12 +1,96 @@
 "use client";
 
 import { useState } from "react";
+import { useForm, ValidationError } from "@formspree/react";
+
+const MAX_VIDEO_SIZE_MB = 25;
+const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 
 export default function Bewerbung() {
   const [videoName, setVideoName] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const formKey =
+    process.env.NEXT_PUBLIC_FORMSPREE_LIFEGUARD_FORM_ID || "xaewjwlr";
+  const [state, handleSubmit] = useForm(formKey);
+  const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const cloudinaryUploadPreset =
+    process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-  if (submitted) {
+  const uploadVideoToCloudinary = async (file: File) => {
+    if (!cloudinaryCloudName || !cloudinaryUploadPreset) {
+      throw new Error(
+        "Cloudinary ist nicht konfiguriert. Bitte Cloud-Name und Upload-Preset setzen.",
+      );
+    }
+
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+    uploadFormData.append("upload_preset", cloudinaryUploadPreset);
+
+    const uploadResponse = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/video/upload`,
+      {
+        method: "POST",
+        body: uploadFormData,
+      },
+    );
+
+    if (!uploadResponse.ok) {
+      throw new Error("Video-Upload fehlgeschlagen.");
+    }
+
+    const uploadResult = (await uploadResponse.json()) as {
+      secure_url?: string;
+    };
+
+    if (!uploadResult.secure_url) {
+      throw new Error("Keine Video-URL vom Upload erhalten.");
+    }
+
+    return uploadResult.secure_url;
+  };
+
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitError("");
+
+    const formElement = event.currentTarget;
+    const fileInput =
+      formElement.querySelector<HTMLInputElement>("#vorstellungsvideo");
+    const selectedFile = fileInput?.files?.[0];
+    const payload = new FormData(formElement);
+
+    if (selectedFile && selectedFile.size > MAX_VIDEO_SIZE_BYTES) {
+      setSubmitError(
+        `Das Video ist zu groß. Bitte lade eine Datei unter ${MAX_VIDEO_SIZE_MB} MB hoch.`,
+      );
+      return;
+    }
+
+    try {
+      if (selectedFile) {
+        setIsUploadingVideo(true);
+        const uploadedVideoUrl = await uploadVideoToCloudinary(selectedFile);
+        setVideoUrl(uploadedVideoUrl);
+        payload.append("Vorstellungsvideo_URL", uploadedVideoUrl);
+        payload.append("Vorstellungsvideo_Dateiname", selectedFile.name);
+      } else {
+        payload.append("Vorstellungsvideo_URL", "Nicht hochgeladen");
+      }
+
+      await handleSubmit(payload);
+    } catch {
+      setSubmitError(
+        "Die Anfrage konnte nicht gesendet werden. Bitte pruefe deine Verbindung und versuche es erneut.",
+      );
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  if (state.succeeded) {
     return (
       <main className="min-h-screen bg-slate-50 px-6 py-20">
         <div className="mx-auto max-w-2xl rounded-3xl bg-white p-10 text-center shadow-sm">
@@ -37,8 +121,12 @@ export default function Bewerbung() {
       {/* Header */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <a href="/" className="text-xl font-bold">
-            Probäder Service
+          <a href="/" className="flex items-center">
+            <img
+              src="/ChatGPT%20Image%20Aug%2014,%202026,%2004_15_31%20PM.png"
+              alt="Probäder Service logo"
+              className="h-12 w-auto object-contain sm:h-14"
+            />
           </a>
 
           <a
@@ -67,13 +155,7 @@ export default function Bewerbung() {
       </section>
 
       {/* Application */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setSubmitted(true);
-        }}
-        className="mx-auto max-w-4xl px-6 py-12"
-      >
+      <form onSubmit={onSubmit} className="mx-auto max-w-4xl px-6 py-12">
         {/* 01 Persönliche Daten */}
         <section className="rounded-3xl bg-white p-8 shadow-sm sm:p-10">
           <div className="mb-8">
@@ -90,6 +172,7 @@ export default function Bewerbung() {
               <input
                 required
                 type="text"
+                name="Vorname"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                 placeholder="Max"
               />
@@ -100,6 +183,7 @@ export default function Bewerbung() {
               <input
                 required
                 type="text"
+                name="Nachname"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                 placeholder="Mustermann"
               />
@@ -110,6 +194,7 @@ export default function Bewerbung() {
               <input
                 required
                 type="email"
+                name="E-Mail"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                 placeholder="max@beispiel.de"
               />
@@ -120,6 +205,7 @@ export default function Bewerbung() {
               <input
                 required
                 type="tel"
+                name="Telefonnummer"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                 placeholder="+49 ..."
               />
@@ -130,6 +216,7 @@ export default function Bewerbung() {
               <input
                 required
                 type="text"
+                name="Wohnort"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                 placeholder="Berlin"
               />
@@ -141,6 +228,7 @@ export default function Bewerbung() {
                 required
                 type="number"
                 min="18"
+                name="Alter"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                 placeholder="18"
               />
@@ -168,6 +256,7 @@ export default function Bewerbung() {
 
               <select
                 required
+                name="Rettungsschwimmer_Erfahrung"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
               >
                 <option value="">Bitte auswählen</option>
@@ -181,7 +270,10 @@ export default function Bewerbung() {
                 Wie lange hast du Erfahrung als Rettungsschwimmer?
               </label>
 
-              <select className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3">
+              <select
+                name="Erfahrungsdauer"
+                className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
+              >
                 <option value="">Bitte auswählen</option>
                 <option>Noch keine Erfahrung</option>
                 <option>Weniger als 1 Jahr</option>
@@ -198,6 +290,7 @@ export default function Bewerbung() {
 
               <textarea
                 rows={4}
+                name="Qualifikationen"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
                 placeholder="z. B. Rettungsschwimmer-Abzeichen, Erste Hilfe, weitere Qualifikationen..."
               />
@@ -210,6 +303,7 @@ export default function Bewerbung() {
 
               <input
                 type="text"
+                name="Sprachen"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
                 placeholder="Deutsch, Englisch, ..."
               />
@@ -236,6 +330,7 @@ export default function Bewerbung() {
               <input
                 required
                 type="date"
+                name="Startdatum"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
               />
             </div>
@@ -247,6 +342,7 @@ export default function Bewerbung() {
 
               <select
                 required
+                name="Beschaeftigungsart"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
               >
                 <option value="">Bitte auswählen</option>
@@ -262,7 +358,10 @@ export default function Bewerbung() {
                 Bist du bereit, an verschiedenen Standorten zu arbeiten?
               </label>
 
-              <select className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3">
+              <select
+                name="Standortflexibilitaet"
+                className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
+              >
                 <option value="">Bitte auswählen</option>
                 <option>Ja</option>
                 <option>Nein</option>
@@ -293,6 +392,7 @@ export default function Bewerbung() {
               <textarea
                 required
                 rows={4}
+                name="Situationsfrage_Regeln"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
                 placeholder="Deine Antwort..."
               />
@@ -307,6 +407,7 @@ export default function Bewerbung() {
               <textarea
                 required
                 rows={4}
+                name="Situationsfrage_Mehrere_Personen"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
                 placeholder="Deine Antwort..."
               />
@@ -321,6 +422,7 @@ export default function Bewerbung() {
               <textarea
                 required
                 rows={4}
+                name="Situationsfrage_Wichtigste_Aufgabe"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
                 placeholder="Deine Antwort..."
               />
@@ -355,6 +457,7 @@ export default function Bewerbung() {
             <label className="mt-6 inline-block cursor-pointer rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white hover:bg-slate-700">
               Video auswählen
               <input
+                id="vorstellungsvideo"
                 type="file"
                 accept="video/*"
                 className="hidden"
@@ -374,8 +477,18 @@ export default function Bewerbung() {
               </p>
             )}
 
+            {videoUrl && (
+              <p className="mt-2 break-all text-xs text-green-700">
+                Video-Link bereit: {videoUrl}
+              </p>
+            )}
+
             <p className="mt-4 text-xs text-slate-400">
               Maximale Länge: 60 Sekunden
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Empfohlen: Datei kleiner als {MAX_VIDEO_SIZE_MB} MB
             </p>
           </div>
         </section>
@@ -391,7 +504,13 @@ export default function Bewerbung() {
           </p>
 
           <label className="mt-8 flex gap-3 text-sm text-slate-300">
-            <input required type="checkbox" className="mt-1" />
+            <input
+              required
+              type="checkbox"
+              name="Datenschutz_Bestaetigung"
+              value="Ja"
+              className="mt-1"
+            />
 
             <span>
               Ich bestätige, dass meine Angaben korrekt sind und stimme der
@@ -399,11 +518,25 @@ export default function Bewerbung() {
             </span>
           </label>
 
+          <ValidationError
+            errors={state.errors}
+            className="mt-4 text-sm text-red-300"
+          />
+
+          {submitError && (
+            <p className="mt-4 text-sm text-red-300">{submitError}</p>
+          )}
+
           <button
             type="submit"
+            disabled={state.submitting || isUploadingVideo}
             className="mt-8 w-full rounded-xl bg-white px-8 py-4 font-bold text-slate-900 transition hover:bg-slate-200"
           >
-            Bewerbung absenden →
+            {isUploadingVideo
+              ? "Video wird hochgeladen..."
+              : state.submitting
+                ? "Sende..."
+                : "Bewerbung absenden →"}
           </button>
         </section>
       </form>
