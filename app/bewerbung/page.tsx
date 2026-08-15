@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, ValidationError } from "@formspree/react";
 
-const MAX_VIDEO_SIZE_MB = 25;
+const MAX_VIDEO_SIZE_MB = 10;
 const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 
 export default function Bewerbung() {
