@@ -5,8 +5,15 @@ import { useForm, ValidationError } from "@formspree/react";
 
 export default function Bewerbung() {
   const [submitError, setSubmitError] = useState("");
+  const envLifeguardFormId =
+    process.env.NEXT_PUBLIC_FORMSPREE_LIFEGUARD_FORM_ID || "";
+  const hasPlaceholderFormId = envLifeguardFormId.includes(
+    "your_lifeguard_form_id",
+  );
   const formKey =
-    process.env.NEXT_PUBLIC_FORMSPREE_LIFEGUARD_FORM_ID || "xaewjwlr";
+    !envLifeguardFormId || hasPlaceholderFormId
+      ? "xaewjwlr"
+      : envLifeguardFormId;
   const [state, handleSubmit] = useForm(formKey);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -18,7 +25,14 @@ export default function Bewerbung() {
 
     console.info("[Bewerbung] Submit started", {
       formKey,
+      usedFallbackFormId: hasPlaceholderFormId || !envLifeguardFormId,
     });
+
+    if (hasPlaceholderFormId) {
+      console.warn(
+        "[Bewerbung] Placeholder Formspree ID detected. Set NEXT_PUBLIC_FORMSPREE_LIFEGUARD_FORM_ID to your real ID in Vercel.",
+      );
+    }
 
     try {
       console.info("[Bewerbung] Sending payload to Formspree", {
