@@ -5,8 +5,6 @@ import { useForm, ValidationError } from "@formspree/react";
 
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
-const CLOUDINARY_UPLOAD_TIMEOUT_MS = 90_000;
-const CLOUDINARY_MAX_UPLOAD_ATTEMPTS = 2;
 
 export default function Bewerbung() {
   const [videoName, setVideoName] = useState("");
@@ -16,117 +14,42 @@ export default function Bewerbung() {
   const formKey =
     process.env.NEXT_PUBLIC_FORMSPREE_LIFEGUARD_FORM_ID || "xaewjwlr";
   const [state, handleSubmit] = useForm(formKey);
-  const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const cloudinaryUploadPreset =
-    process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-  const uploadVideoToCloudinary = async (file: File) => {
-    console.info("[Bewerbung] Starting Cloudinary upload", {
-      hasCloudName: Boolean(cloudinaryCloudName),
-      hasUploadPreset: Boolean(cloudinaryUploadPreset),
+  const uploadVideoToServer = async (file: File) => {
+    console.info("[Bewerbung] Starting secure Cloudinary upload", {
       fileName: file.name,
       fileSizeBytes: file.size,
       fileType: file.type,
     });
 
-    if (!cloudinaryCloudName || !cloudinaryUploadPreset) {
-      console.error("[Bewerbung] Missing Cloudinary env configuration", {
-        hasCloudName: Boolean(cloudinaryCloudName),
-        hasUploadPreset: Boolean(cloudinaryUploadPreset),
-      });
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file, file.name);
+
+    const uploadResponse = await fetch("/api/cloudinary-upload", {
+      method: "POST",
+      body: uploadFormData,
+    });
+
+    const uploadJson = (await uploadResponse.json()) as {
+      secure_url?: string;
+      error?: string;
+    };
+
+    console.info("[Bewerbung] Server upload response", {
+      status: uploadResponse.status,
+      ok: uploadResponse.ok,
+      hasSecureUrl: Boolean(uploadJson.secure_url),
+      errorMessage: uploadJson.error || null,
+    });
+
+    if (!uploadResponse.ok || !uploadJson.secure_url) {
       throw new Error(
-        "Cloudinary ist nicht konfiguriert. Bitte Cloud-Name und Upload-Preset setzen.",
+        uploadJson.error ||
+          "Der Video-Upload konnte nicht verarbeitet werden. Bitte versuche es erneut.",
       );
     }
 
-    let lastError: Error | null = null;
-
-    for (
-      let attempt = 1;
-      attempt <= CLOUDINARY_MAX_UPLOAD_ATTEMPTS;
-      attempt++
-    ) {
-      const uploadFormData = new FormData();
-      uploadFormData.append("file", file);
-      uploadFormData.append("upload_preset", cloudinaryUploadPreset);
-
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(
-        () => abortController.abort(),
-        CLOUDINARY_UPLOAD_TIMEOUT_MS,
-      );
-
-      try {
-        console.info("[Bewerbung] Cloudinary upload attempt", {
-          attempt,
-          maxAttempts: CLOUDINARY_MAX_UPLOAD_ATTEMPTS,
-          timeoutMs: CLOUDINARY_UPLOAD_TIMEOUT_MS,
-        });
-
-        const uploadResponse = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/video/upload`,
-          {
-            method: "POST",
-            body: uploadFormData,
-            signal: abortController.signal,
-          },
-        );
-
-        clearTimeout(timeoutId);
-
-        const uploadJson = (await uploadResponse.json()) as {
-          secure_url?: string;
-          error?: { message?: string };
-        };
-
-        console.info("[Bewerbung] Cloudinary response", {
-          status: uploadResponse.status,
-          ok: uploadResponse.ok,
-          hasSecureUrl: Boolean(uploadJson.secure_url),
-          errorMessage: uploadJson.error?.message || null,
-        });
-
-        if (!uploadResponse.ok) {
-          const cloudinaryMessage = uploadJson.error?.message;
-          throw new Error(cloudinaryMessage || "Video-Upload fehlgeschlagen.");
-        }
-
-        if (!uploadJson.secure_url) {
-          throw new Error("Keine Video-URL vom Upload erhalten.");
-        }
-
-        console.info("[Bewerbung] Cloudinary upload successful", {
-          attempt,
-        });
-        return uploadJson.secure_url;
-      } catch (error) {
-        clearTimeout(timeoutId);
-
-        if (error instanceof DOMException && error.name === "AbortError") {
-          lastError = new Error(
-            "Der Video-Upload hat zu lange gedauert. Bitte pruefe deine Verbindung und versuche es erneut.",
-          );
-        } else if (error instanceof Error) {
-          lastError = error;
-        } else {
-          lastError = new Error("Unbekannter Fehler beim Video-Upload.");
-        }
-
-        console.error("[Bewerbung] Cloudinary upload error", {
-          attempt,
-          message: lastError.message,
-        });
-
-        if (attempt < CLOUDINARY_MAX_UPLOAD_ATTEMPTS) {
-          console.warn("[Bewerbung] Retrying Cloudinary upload", {
-            nextAttempt: attempt + 1,
-          });
-          continue;
-        }
-      }
-    }
-
-    throw lastError || new Error("Video-Upload fehlgeschlagen.");
+    return uploadJson.secure_url;
   };
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -159,7 +82,7 @@ export default function Bewerbung() {
     try {
       if (selectedFile) {
         setIsUploadingVideo(true);
-        const uploadedVideoUrl = await uploadVideoToCloudinary(selectedFile);
+        const uploadedVideoUrl = await uploadVideoToServer(selectedFile);
         setVideoUrl(uploadedVideoUrl);
         payload.append("Vorstellungsvideo_URL", uploadedVideoUrl);
         payload.append("Vorstellungsvideo_Dateiname", selectedFile.name);
