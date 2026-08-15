@@ -3,117 +3,26 @@
 import { useState } from "react";
 import { useForm, ValidationError } from "@formspree/react";
 
-const MAX_VIDEO_SIZE_MB = 10;
-const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
-
 export default function Bewerbung() {
-  const [videoName, setVideoName] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const formKey =
     process.env.NEXT_PUBLIC_FORMSPREE_LIFEGUARD_FORM_ID || "xaewjwlr";
   const [state, handleSubmit] = useForm(formKey);
-
-  const uploadVideoToServer = async (file: File) => {
-    console.info("[Bewerbung] Starting secure Cloudinary upload", {
-      fileName: file.name,
-      fileSizeBytes: file.size,
-      fileType: file.type,
-    });
-
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", file, file.name);
-
-    const uploadResponse = await fetch("/api/cloudinary-upload", {
-      method: "POST",
-      body: uploadFormData,
-    });
-
-    const uploadJson = (await uploadResponse.json()) as {
-      secure_url?: string;
-      error?: string;
-    };
-
-    console.info("[Bewerbung] Server upload response", {
-      status: uploadResponse.status,
-      ok: uploadResponse.ok,
-      hasSecureUrl: Boolean(uploadJson.secure_url),
-      errorMessage: uploadJson.error || null,
-    });
-
-    if (!uploadResponse.ok || !uploadJson.secure_url) {
-      throw new Error(
-        uploadJson.error ||
-          "Der Video-Upload konnte nicht verarbeitet werden. Bitte versuche es erneut.",
-      );
-    }
-
-    return uploadJson.secure_url;
-  };
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitError("");
 
     const formElement = event.currentTarget;
-    const fileInput =
-      formElement.querySelector<HTMLInputElement>("#vorstellungsvideo");
-    const selectedFile = fileInput?.files?.[0];
     const payload = new FormData(formElement);
-    const publicVideoLink = String(
-      formElement.querySelector<HTMLInputElement>("#video-link")?.value || "",
-    ).trim();
 
     console.info("[Bewerbung] Submit started", {
-      hasVideo: Boolean(selectedFile),
-      fileSizeBytes: selectedFile?.size || 0,
-      hasPublicVideoLink: Boolean(publicVideoLink),
       formKey,
     });
 
-    if (selectedFile && selectedFile.size > MAX_VIDEO_SIZE_BYTES) {
-      console.warn("[Bewerbung] Submit blocked: video too large", {
-        fileSizeBytes: selectedFile.size,
-        maxSizeBytes: MAX_VIDEO_SIZE_BYTES,
-      });
-      setSubmitError(
-        `Das Video ist zu groß. Bitte lade eine Datei unter ${MAX_VIDEO_SIZE_MB} MB hoch oder gib einen öffentlichen Video-Link an.`,
-      );
-      return;
-    }
-
     try {
-      if (selectedFile) {
-        setIsUploadingVideo(true);
-
-        try {
-          const uploadedVideoUrl = await uploadVideoToServer(selectedFile);
-          setVideoUrl(uploadedVideoUrl);
-          payload.append("Vorstellungsvideo_URL", uploadedVideoUrl);
-          payload.append("Vorstellungsvideo_Dateiname", selectedFile.name);
-        } catch (uploadError) {
-          console.warn("[Bewerbung] Video upload failed; continuing without uploaded file", {
-            message:
-              uploadError instanceof Error
-                ? uploadError.message
-                : "Unknown upload error",
-          });
-
-          if (publicVideoLink) {
-            payload.append("Vorstellungsvideo_URL", publicVideoLink);
-          } else {
-            payload.append("Vorstellungsvideo_URL", "Nicht hochgeladen");
-          }
-        }
-      } else if (publicVideoLink) {
-        payload.append("Vorstellungsvideo_URL", publicVideoLink);
-      } else {
-        payload.append("Vorstellungsvideo_URL", "Nicht hochgeladen");
-      }
-
       console.info("[Bewerbung] Sending payload to Formspree", {
-        hasVideoUrlField: Boolean(payload.get("Vorstellungsvideo_URL")),
+        hasInterviewRequest: Boolean(payload.get("Interview_Termin")),
       });
       await handleSubmit(payload);
       console.info("[Bewerbung] Formspree submit completed", {
@@ -129,7 +38,6 @@ export default function Bewerbung() {
       });
       setSubmitError(message);
     } finally {
-      setIsUploadingVideo(false);
       console.info("[Bewerbung] Submit finished");
     }
   };
@@ -474,82 +382,51 @@ export default function Bewerbung() {
           </div>
         </section>
 
-        {/* 05 Video */}
+        {/* 05 Video-Interview */}
         <section className="mt-8 rounded-3xl bg-white p-8 shadow-sm sm:p-10">
           <div className="mb-8">
             <span className="text-sm font-bold text-slate-400">05</span>
 
             <h2 className="mt-1 text-2xl font-bold">
-              Deine 60-Sekunden-Vorstellung 🎥
+              Vorstellungsgespraech vereinbaren
             </h2>
 
             <p className="mt-3 text-slate-600">
-              Wir möchten dich gerne persönlich kennenlernen.
+              Wenn du in die engere Auswahl kommst, bestaetigen wir dir einen
+              Video-Interview-Termin per E-Mail.
             </p>
           </div>
 
-          <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-            <div className="text-4xl">🎥</div>
-
-            <h3 className="mt-4 font-bold">Stelle dich kurz vor</h3>
-
-            <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500">
-              Erzähle uns in maximal 60 Sekunden, wer du bist, welche Erfahrung
-              du hast und warum du bei Probäder Service arbeiten möchtest.
-            </p>
-
-            <label className="mt-6 inline-block cursor-pointer rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white hover:bg-slate-700">
-              Video auswählen
-              <input
-                id="vorstellungsvideo"
-                type="file"
-                accept="video/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-
-                  if (file) {
-                    setVideoName(file.name);
-                  }
-                }}
-              />
-            </label>
-
-            <div className="mt-6 text-left">
-              <label htmlFor="video-link" className="block text-sm font-semibold text-slate-700">
-                Alternativ: öffentlicher Video-Link
+          <div className="space-y-6">
+            <div>
+              <label className="font-semibold">
+                Bevorzugter Zeitraum fuer das Video-Interview
               </label>
               <input
-                id="video-link"
-                type="url"
-                name="Vorstellungsvideo_Link"
+                type="text"
+                name="Interview_Termin"
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
-                placeholder="https://drive.google.com/... oder YouTube-Link"
+                placeholder="z. B. naechste Woche, werktags ab 17 Uhr"
               />
             </div>
 
-            {videoName && (
-              <p className="mt-4 text-sm font-semibold text-green-700">
-                ✓ {videoName}
-              </p>
-            )}
+            <div>
+              <label className="font-semibold">
+                Wie sollen wir den Termin abstimmen?
+              </label>
+              <select
+                name="Interview_Kontaktart"
+                className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
+              >
+                <option value="">Bitte auswaehlen</option>
+                <option>Per E-Mail</option>
+                <option>Per Telefon und E-Mail-Bestaetigung</option>
+              </select>
+            </div>
 
-            {videoUrl && (
-              <p className="mt-2 break-all text-xs text-green-700">
-                Video-Link bereit: {videoUrl}
-              </p>
-            )}
-
-            <p className="mt-4 text-xs text-slate-400">
-              Maximale Länge: 60 Sekunden
-            </p>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Empfohlen: Datei kleiner als {MAX_VIDEO_SIZE_MB} MB
-            </p>
-
-            <p className="mt-2 text-xs text-slate-500">
-              Video ist optional. Wenn der Upload nicht funktioniert, kannst du einfach einen Link eintragen.
+            <p className="text-xs text-slate-500">
+              Nach Eingang deiner Bewerbung melden wir uns per E-Mail zur
+              Terminbestaetigung.
             </p>
           </div>
         </section>
@@ -590,14 +467,10 @@ export default function Bewerbung() {
 
           <button
             type="submit"
-            disabled={state.submitting || isUploadingVideo}
+            disabled={state.submitting}
             className="mt-8 w-full rounded-xl bg-white px-8 py-4 font-bold text-slate-900 transition hover:bg-slate-200"
           >
-            {isUploadingVideo
-              ? "Video wird hochgeladen..."
-              : state.submitting
-                ? "Sende..."
-                : "Bewerbung absenden →"}
+            {state.submitting ? "Sende..." : "Bewerbung absenden →"}
           </button>
         </section>
       </form>
