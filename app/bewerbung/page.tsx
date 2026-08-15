@@ -5,6 +5,8 @@ import { useForm, ValidationError } from "@formspree/react";
 
 const MAX_VIDEO_SIZE_MB = 25;
 const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+const CLOUDINARY_UPLOAD_TIMEOUT_MS = 90_000;
+const CLOUDINARY_MAX_UPLOAD_ATTEMPTS = 2;
 
 export default function Bewerbung() {
   const [videoName, setVideoName] = useState("");
@@ -25,31 +27,70 @@ export default function Bewerbung() {
       );
     }
 
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", file);
-    uploadFormData.append("upload_preset", cloudinaryUploadPreset);
+    let lastError: Error | null = null;
 
-    const uploadResponse = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/video/upload`,
-      {
-        method: "POST",
-        body: uploadFormData,
-      },
-    );
+    for (
+      let attempt = 1;
+      attempt <= CLOUDINARY_MAX_UPLOAD_ATTEMPTS;
+      attempt++
+    ) {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      uploadFormData.append("upload_preset", cloudinaryUploadPreset);
 
-    if (!uploadResponse.ok) {
-      throw new Error("Video-Upload fehlgeschlagen.");
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(
+        () => abortController.abort(),
+        CLOUDINARY_UPLOAD_TIMEOUT_MS,
+      );
+
+      try {
+        const uploadResponse = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/video/upload`,
+          {
+            method: "POST",
+            body: uploadFormData,
+            signal: abortController.signal,
+          },
+        );
+
+        clearTimeout(timeoutId);
+
+        const uploadJson = (await uploadResponse.json()) as {
+          secure_url?: string;
+          error?: { message?: string };
+        };
+
+        if (!uploadResponse.ok) {
+          const cloudinaryMessage = uploadJson.error?.message;
+          throw new Error(cloudinaryMessage || "Video-Upload fehlgeschlagen.");
+        }
+
+        if (!uploadJson.secure_url) {
+          throw new Error("Keine Video-URL vom Upload erhalten.");
+        }
+
+        return uploadJson.secure_url;
+      } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof DOMException && error.name === "AbortError") {
+          lastError = new Error(
+            "Der Video-Upload hat zu lange gedauert. Bitte pruefe deine Verbindung und versuche es erneut.",
+          );
+        } else if (error instanceof Error) {
+          lastError = error;
+        } else {
+          lastError = new Error("Unbekannter Fehler beim Video-Upload.");
+        }
+
+        if (attempt < CLOUDINARY_MAX_UPLOAD_ATTEMPTS) {
+          continue;
+        }
+      }
     }
 
-    const uploadResult = (await uploadResponse.json()) as {
-      secure_url?: string;
-    };
-
-    if (!uploadResult.secure_url) {
-      throw new Error("Keine Video-URL vom Upload erhalten.");
-    }
-
-    return uploadResult.secure_url;
+    throw lastError || new Error("Video-Upload fehlgeschlagen.");
   };
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -81,10 +122,12 @@ export default function Bewerbung() {
       }
 
       await handleSubmit(payload);
-    } catch {
-      setSubmitError(
-        "Die Anfrage konnte nicht gesendet werden. Bitte pruefe deine Verbindung und versuche es erneut.",
-      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Die Anfrage konnte nicht gesendet werden. Bitte pruefe deine Verbindung und versuche es erneut.";
+      setSubmitError(message);
     } finally {
       setIsUploadingVideo(false);
     }
