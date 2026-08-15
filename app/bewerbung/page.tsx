@@ -21,7 +21,19 @@ export default function Bewerbung() {
     process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
   const uploadVideoToCloudinary = async (file: File) => {
+    console.info("[Bewerbung] Starting Cloudinary upload", {
+      hasCloudName: Boolean(cloudinaryCloudName),
+      hasUploadPreset: Boolean(cloudinaryUploadPreset),
+      fileName: file.name,
+      fileSizeBytes: file.size,
+      fileType: file.type,
+    });
+
     if (!cloudinaryCloudName || !cloudinaryUploadPreset) {
+      console.error("[Bewerbung] Missing Cloudinary env configuration", {
+        hasCloudName: Boolean(cloudinaryCloudName),
+        hasUploadPreset: Boolean(cloudinaryUploadPreset),
+      });
       throw new Error(
         "Cloudinary ist nicht konfiguriert. Bitte Cloud-Name und Upload-Preset setzen.",
       );
@@ -45,6 +57,12 @@ export default function Bewerbung() {
       );
 
       try {
+        console.info("[Bewerbung] Cloudinary upload attempt", {
+          attempt,
+          maxAttempts: CLOUDINARY_MAX_UPLOAD_ATTEMPTS,
+          timeoutMs: CLOUDINARY_UPLOAD_TIMEOUT_MS,
+        });
+
         const uploadResponse = await fetch(
           `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/video/upload`,
           {
@@ -61,6 +79,13 @@ export default function Bewerbung() {
           error?: { message?: string };
         };
 
+        console.info("[Bewerbung] Cloudinary response", {
+          status: uploadResponse.status,
+          ok: uploadResponse.ok,
+          hasSecureUrl: Boolean(uploadJson.secure_url),
+          errorMessage: uploadJson.error?.message || null,
+        });
+
         if (!uploadResponse.ok) {
           const cloudinaryMessage = uploadJson.error?.message;
           throw new Error(cloudinaryMessage || "Video-Upload fehlgeschlagen.");
@@ -70,6 +95,9 @@ export default function Bewerbung() {
           throw new Error("Keine Video-URL vom Upload erhalten.");
         }
 
+        console.info("[Bewerbung] Cloudinary upload successful", {
+          attempt,
+        });
         return uploadJson.secure_url;
       } catch (error) {
         clearTimeout(timeoutId);
@@ -84,7 +112,15 @@ export default function Bewerbung() {
           lastError = new Error("Unbekannter Fehler beim Video-Upload.");
         }
 
+        console.error("[Bewerbung] Cloudinary upload error", {
+          attempt,
+          message: lastError.message,
+        });
+
         if (attempt < CLOUDINARY_MAX_UPLOAD_ATTEMPTS) {
+          console.warn("[Bewerbung] Retrying Cloudinary upload", {
+            nextAttempt: attempt + 1,
+          });
           continue;
         }
       }
@@ -103,7 +139,17 @@ export default function Bewerbung() {
     const selectedFile = fileInput?.files?.[0];
     const payload = new FormData(formElement);
 
+    console.info("[Bewerbung] Submit started", {
+      hasVideo: Boolean(selectedFile),
+      fileSizeBytes: selectedFile?.size || 0,
+      formKey,
+    });
+
     if (selectedFile && selectedFile.size > MAX_VIDEO_SIZE_BYTES) {
+      console.warn("[Bewerbung] Submit blocked: video too large", {
+        fileSizeBytes: selectedFile.size,
+        maxSizeBytes: MAX_VIDEO_SIZE_BYTES,
+      });
       setSubmitError(
         `Das Video ist zu groß. Bitte lade eine Datei unter ${MAX_VIDEO_SIZE_MB} MB hoch.`,
       );
@@ -121,15 +167,25 @@ export default function Bewerbung() {
         payload.append("Vorstellungsvideo_URL", "Nicht hochgeladen");
       }
 
+      console.info("[Bewerbung] Sending payload to Formspree", {
+        hasVideoUrlField: Boolean(payload.get("Vorstellungsvideo_URL")),
+      });
       await handleSubmit(payload);
+      console.info("[Bewerbung] Formspree submit completed", {
+        succeeded: true,
+      });
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Die Anfrage konnte nicht gesendet werden. Bitte pruefe deine Verbindung und versuche es erneut.";
+      console.error("[Bewerbung] Submit failed", {
+        message,
+      });
       setSubmitError(message);
     } finally {
       setIsUploadingVideo(false);
+      console.info("[Bewerbung] Submit finished");
     }
   };
 
