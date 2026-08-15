@@ -61,10 +61,14 @@ export default function Bewerbung() {
       formElement.querySelector<HTMLInputElement>("#vorstellungsvideo");
     const selectedFile = fileInput?.files?.[0];
     const payload = new FormData(formElement);
+    const publicVideoLink = String(
+      formElement.querySelector<HTMLInputElement>("#video-link")?.value || "",
+    ).trim();
 
     console.info("[Bewerbung] Submit started", {
       hasVideo: Boolean(selectedFile),
       fileSizeBytes: selectedFile?.size || 0,
+      hasPublicVideoLink: Boolean(publicVideoLink),
       formKey,
     });
 
@@ -74,7 +78,7 @@ export default function Bewerbung() {
         maxSizeBytes: MAX_VIDEO_SIZE_BYTES,
       });
       setSubmitError(
-        `Das Video ist zu groß. Bitte lade eine Datei unter ${MAX_VIDEO_SIZE_MB} MB hoch.`,
+        `Das Video ist zu groß. Bitte lade eine Datei unter ${MAX_VIDEO_SIZE_MB} MB hoch oder gib einen öffentlichen Video-Link an.`,
       );
       return;
     }
@@ -82,10 +86,28 @@ export default function Bewerbung() {
     try {
       if (selectedFile) {
         setIsUploadingVideo(true);
-        const uploadedVideoUrl = await uploadVideoToServer(selectedFile);
-        setVideoUrl(uploadedVideoUrl);
-        payload.append("Vorstellungsvideo_URL", uploadedVideoUrl);
-        payload.append("Vorstellungsvideo_Dateiname", selectedFile.name);
+
+        try {
+          const uploadedVideoUrl = await uploadVideoToServer(selectedFile);
+          setVideoUrl(uploadedVideoUrl);
+          payload.append("Vorstellungsvideo_URL", uploadedVideoUrl);
+          payload.append("Vorstellungsvideo_Dateiname", selectedFile.name);
+        } catch (uploadError) {
+          console.warn("[Bewerbung] Video upload failed; continuing without uploaded file", {
+            message:
+              uploadError instanceof Error
+                ? uploadError.message
+                : "Unknown upload error",
+          });
+
+          if (publicVideoLink) {
+            payload.append("Vorstellungsvideo_URL", publicVideoLink);
+          } else {
+            payload.append("Vorstellungsvideo_URL", "Nicht hochgeladen");
+          }
+        }
+      } else if (publicVideoLink) {
+        payload.append("Vorstellungsvideo_URL", publicVideoLink);
       } else {
         payload.append("Vorstellungsvideo_URL", "Nicht hochgeladen");
       }
@@ -493,6 +515,19 @@ export default function Bewerbung() {
               />
             </label>
 
+            <div className="mt-6 text-left">
+              <label htmlFor="video-link" className="block text-sm font-semibold text-slate-700">
+                Alternativ: öffentlicher Video-Link
+              </label>
+              <input
+                id="video-link"
+                type="url"
+                name="Vorstellungsvideo_Link"
+                className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3"
+                placeholder="https://drive.google.com/... oder YouTube-Link"
+              />
+            </div>
+
             {videoName && (
               <p className="mt-4 text-sm font-semibold text-green-700">
                 ✓ {videoName}
@@ -511,6 +546,10 @@ export default function Bewerbung() {
 
             <p className="mt-1 text-xs text-slate-400">
               Empfohlen: Datei kleiner als {MAX_VIDEO_SIZE_MB} MB
+            </p>
+
+            <p className="mt-2 text-xs text-slate-500">
+              Video ist optional. Wenn der Upload nicht funktioniert, kannst du einfach einen Link eintragen.
             </p>
           </div>
         </section>
